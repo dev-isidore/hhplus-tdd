@@ -1,12 +1,18 @@
 package io.hhplus.tdd.point
 
+import io.hhplus.tdd.ErrorResponse
+import io.hhplus.tdd.point.dto.response.UserPointResponse
+import io.hhplus.tdd.user.exception.UserNotFoundException
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
+import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.http.HttpStatus
+import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.*
 
 @RestController
 @RequestMapping("/point")
-class PointController {
+class PointController(@Autowired private val pointService: PointService) {
     private val logger: Logger = LoggerFactory.getLogger(javaClass)
 
     /**
@@ -15,8 +21,9 @@ class PointController {
     @GetMapping("{id}")
     fun point(
         @PathVariable id: Long,
-    ): UserPoint {
-        return UserPoint(0, 0, 0)
+    ): UserPointResponse {
+        val currentUserPoint = pointService.getCurrentUserPoint(id)
+        return UserPointResponse.of(currentUserPoint)
     }
 
     /**
@@ -49,5 +56,13 @@ class PointController {
         @RequestBody amount: Long,
     ): UserPoint {
         return UserPoint(0, 0, 0)
+    }
+
+    @ExceptionHandler(UserNotFoundException::class)
+    fun handleUserNotFound(e: UserNotFoundException): ResponseEntity<ErrorResponse> {
+        return ResponseEntity(
+            ErrorResponse("404", "이용자 정보를 찾을 수 없습니다."),
+            HttpStatus.NOT_FOUND
+        )
     }
 }
