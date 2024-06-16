@@ -1,6 +1,7 @@
 package io.hhplus.tdd.point
 
 import io.hhplus.tdd.ErrorResponse
+import io.hhplus.tdd.point.dto.response.PointHistoryResponse
 import io.hhplus.tdd.point.dto.response.UserPointResponse
 import io.hhplus.tdd.user.exception.UserNotFoundException
 import org.slf4j.Logger
@@ -23,6 +24,7 @@ class PointController(@Autowired private val pointService: PointService) {
         @PathVariable id: Long,
     ): UserPointResponse {
         val currentUserPoint = pointService.getCurrentUserPoint(id)
+        logger.info("PointController.point id:$id currentUserPoint:$currentUserPoint")
         return UserPointResponse.of(currentUserPoint)
     }
 
@@ -32,8 +34,10 @@ class PointController(@Autowired private val pointService: PointService) {
     @GetMapping("{id}/histories")
     fun history(
         @PathVariable id: Long,
-    ): List<PointHistory> {
-        return emptyList()
+    ): List<PointHistoryResponse> {
+        val userPointHistories = pointService.getUserPointHistories(id)
+        logger.info("PointController.point id:$id userPointHistories:${userPointHistories.size}")
+        return userPointHistories.map { PointHistoryResponse.of(it) }
     }
 
     /**
@@ -60,8 +64,9 @@ class PointController(@Autowired private val pointService: PointService) {
 
     @ExceptionHandler(UserNotFoundException::class)
     fun handleUserNotFound(e: UserNotFoundException): ResponseEntity<ErrorResponse> {
+        logger.warn("User not found: ${e.message}")
         return ResponseEntity(
-            ErrorResponse("404", "이용자 정보를 찾을 수 없습니다."),
+            ErrorResponse("404", e.message?:"이용자 정보를 찾을 수 없습니다."),
             HttpStatus.NOT_FOUND
         )
     }
