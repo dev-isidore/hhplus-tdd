@@ -3,18 +3,15 @@ package io.hhplus.tdd.point
 import io.hhplus.tdd.database.PointHistoryRepository
 import io.hhplus.tdd.database.UserPointRepository
 import io.hhplus.tdd.database.UserRepository
-import io.hhplus.tdd.user.exception.UserNotFoundException
 import org.junit.jupiter.api.Test
-import org.mockito.ArgumentMatchers.eq
-import org.mockito.Mockito.`when`
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc
 import org.springframework.boot.test.context.SpringBootTest
+import org.springframework.http.MediaType
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
-import org.springframework.test.web.servlet.result.MockMvcResultHandlers
+import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.*
-import java.util.*
 
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -153,6 +150,119 @@ class PointControllerEntryTest() {
                 jsonPath("$[2].amount").value(1500L),
                 jsonPath("$[2].timeMillis").value(1200L),
             )
+    }
+    //endregion
+
+    //region PATCH /point/{id}/charge
+    @Test
+            /**
+             * Long 형식의 입력이 아닌 경우 400 응답을 해야 한다.
+             */
+    fun `포인트 충전시 Long 형식 아이디가 아닌 경우`() {
+        mockMvc.perform(
+            patch("/point/id/charge")
+                .contentType(MediaType.APPLICATION_JSON)
+                .accept(MediaType.APPLICATION_JSON)
+                .content("1000")
+            ).andExpect(
+                status().isBadRequest
+            )
+    }
+
+    @Test
+            /**
+             * Long 형식의 입력이 아닌 경우 400 응답을 해야 한다.
+             */
+    fun `포인트 충전시 Long 형식 amount가 아닌 경우`() {
+        val user = userRepository.insert("testPointChargeInvalidAmountUser")
+
+        mockMvc.perform(
+            patch("/point/${user.id}/charge")
+                .contentType(MediaType.APPLICATION_JSON)
+                .accept(MediaType.APPLICATION_JSON)
+                .content("\"test\"")
+        ).andExpect(
+            status().isBadRequest
+        )
+    }
+
+    @Test
+            /**
+             * amount는 양수 입력만 받아야 한다.
+             */
+    fun `포인트 충전시 amount가 음수인 경우`() {
+        val user = userRepository.insert("testPointChargeInvalidAmountUser")
+
+        mockMvc.perform(
+            patch("/point/${user.id}/charge")
+                .contentType(MediaType.APPLICATION_JSON)
+                .accept(MediaType.APPLICATION_JSON)
+                .content("-1000")
+        ).andExpect(
+            status().isBadRequest
+        )
+    }
+
+    @Test
+            /**
+             * 존재하지 않는 아이디의 경우 예외를 받아 404 응답을 해야 한다.
+             */
+    fun `포인트 충전시 존재하지 않는 아이디의 경우`() {
+        mockMvc.perform(
+            patch("/point/${NOT_EXISTING_USER_ID}/charge")
+                .contentType(MediaType.APPLICATION_JSON)
+                .accept(MediaType.APPLICATION_JSON)
+                .content("1000")
+        ).andExpect(
+            status().isNotFound
+        ).andExpectAll(
+            jsonPath("$.code").value("404"),
+            jsonPath("$.message").value("$NOT_EXISTING_USER_ID does not exist.")
+        )
+    }
+
+    @Test
+            /**
+             * 포인트 충전시 기존 포인트와 합한 결과를 반환해야 한다.
+             * 포인트 충전 결과를 올바른 응답 객체에 담아 응답해야 한다.
+             */
+    fun `포인트 충전시 기존 포인트가 있는 경우`() {
+        val user = userRepository.insert("testPointChargeExistingUser")
+        pointHistoryRepository.insert(user.id, 1000L, TransactionType.CHARGE, 1000L)
+        userPointRepository.insertOrUpdate(user.id, 1000L)
+
+        mockMvc.perform(
+            patch("/point/${user.id}/charge")
+                .contentType(MediaType.APPLICATION_JSON)
+                .accept(MediaType.APPLICATION_JSON)
+                .content("1000")
+        ).andExpect(
+            status().isOk
+        ).andExpectAll(
+            jsonPath("$.id").value(user.id),
+            jsonPath("$.point").value(1000L + 1000L),
+        )
+    }
+
+    @Test
+            /**
+             * 포인트 충전시 신규 회원의 경우 새로이 충전해 결과를 반환해야 한다.
+             * 포인트 충전 결과를 올바른 응답 객체에 담아 응답해야 한다.
+             */
+    fun `포인트 충전시 기존 포인트가 없는 경우`() {
+        val user = userRepository.insert("testPointChargeNewUser")
+
+        mockMvc.perform(
+            patch("/point/${user.id}/charge")
+                .contentType(MediaType.APPLICATION_JSON)
+                .accept(MediaType.APPLICATION_JSON)
+                .content("1000")
+        ).andExpect(
+            status().isOk
+        ).andExpectAll(
+            jsonPath("$.id").value(user.id),
+            jsonPath("$.point").value(1000L),
+        )
     }
     //endregion
 }

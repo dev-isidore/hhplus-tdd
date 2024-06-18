@@ -3,6 +3,7 @@ package io.hhplus.tdd.point
 import io.hhplus.tdd.database.PointHistoryRepository
 import io.hhplus.tdd.database.UserPointRepository
 import io.hhplus.tdd.database.UserRepository
+import io.hhplus.tdd.point.exception.NegativeAmountException
 import io.hhplus.tdd.user.User
 import io.hhplus.tdd.user.UserService
 import io.hhplus.tdd.user.exception.UserNotFoundException
@@ -11,6 +12,10 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
 
 class PointServiceTest {
+    companion object {
+        val NOT_EXISITING_USER_ID = 3L
+    }
+
     private val pointService = PointService(
         userService = UserServiceStub(),
         userPointRepository = UserPointRepositoryStub(),
@@ -23,12 +28,10 @@ class PointServiceTest {
              * 현재 포인트 조회하려는 id가 없는 경우 예외를 던진다.
              */
     fun `현재 포인트 조회하려는 id의 회원이 없는 경우`() {
-        val notExistingUserId = 3L
-
         val exception = assertThrows<UserNotFoundException> {
-            pointService.getCurrentUserPoint(notExistingUserId)
+            pointService.getCurrentUserPoint(NOT_EXISITING_USER_ID)
         }
-        assertThat(exception).message().contains("$notExistingUserId does not exist.")
+        assertThat(exception).message().contains("$NOT_EXISITING_USER_ID does not exist.")
     }
 
     @Test
@@ -52,17 +55,15 @@ class PointServiceTest {
              * 포인트 이력 조회하려는 id의 회원이 없는 경우 예외를 던진다.
              */
     fun `포인트 이력 조회하려는 id의 회원이 없는 경우`() {
-        val notExistingUserId = 3L
-
         val exception = assertThrows<UserNotFoundException> {
-            pointService.getUserPointHistories(notExistingUserId)
+            pointService.getUserPointHistories(NOT_EXISITING_USER_ID)
         }
-        assertThat(exception).message().contains("$notExistingUserId does not exist.")
+        assertThat(exception).message().contains("$NOT_EXISITING_USER_ID does not exist.")
     }
 
     @Test
             /**
-             * 포인트 이력 조회시 id의 회원은 있으나 이력이 없는 경우
+             * 포인트 이력 조회시 id의 회원은 있으나 이력이 없는 경우 빈 리스트가 응답된다.
              */
     fun `포인트 이력 조회시 조회하려는 회원의 포인트 이력이 없는 경우`() {
         val userId = 0L
@@ -85,11 +86,94 @@ class PointServiceTest {
 
         assertThat(userPointHistories1.size).isEqualTo(2)
         assertThat(userPointHistories1[0]).isEqualTo(PointHistory(0L, 1L, TransactionType.CHARGE, 1000L, 1000L))
-        assertThat(userPointHistories1[1]).isEqualTo(PointHistory(2L, 1L, TransactionType.CHARGE, 1200L, 1100L))
+        assertThat(userPointHistories1[1]).isEqualTo(PointHistory(2L, 1L, TransactionType.CHARGE, 1000L, 1100L))
         assertThat(userPointHistories2.size).isEqualTo(1)
-        assertThat(userPointHistories2[0]).isEqualTo(PointHistory(1L, 2L, TransactionType.CHARGE, 1000L, 1000L))
+        assertThat(userPointHistories2[0]).isEqualTo(PointHistory(1L, 2L, TransactionType.CHARGE, 2000L, 1200L))
     }
     //endregion
+
+    //region chargeUserPoint
+    @Test
+            /**
+             * 포인트 충전시 존재하지 않는 id로 시도시 예외를 던진다.
+             */
+    fun `포인트 충전시 존재하지 않는 아이디로 시도하는 경우`() {
+        val exception = assertThrows<UserNotFoundException> {
+            pointService.chargeUserPoint(NOT_EXISITING_USER_ID, 1000L)
+        }
+        assertThat(exception).message().contains("$NOT_EXISITING_USER_ID does not exist.")
+    }
+
+    @Test
+            /**
+             * 포인트 충전시 충전하려는 양이 음수인 경우 예외를 던진다.
+             */
+    fun `포인트 충전시 충전하려는 양이 음수인 경우`() {
+        val amount = -1000L
+
+        val exception = assertThrows<NegativeAmountException> {
+            pointService.chargeUserPoint(0L, amount)
+        }
+        assertThat(exception).message().contains("amount:$amount cannot be negative")
+    }
+
+    @Test
+            /**
+             * 포인트 충전시 정상 경로를 따른다.
+             */
+    fun `포인트 충전시 정상 경로`() {
+        val userId = 0L
+        val currentUserPoint = UserPoint(0L, 1000L, 1000L)
+        val amount = TEST_PARAM_AMOUNT
+
+        val chargeUserPoint = pointService.chargeUserPoint(userId, amount)
+
+        assertThat(chargeUserPoint.point).isEqualTo(currentUserPoint.point + amount)
+        assertThat(chargeUserPoint.id).isEqualTo(userId)
+    }
+    //endregion
+}
+
+private const val TEST_PARAM_AMOUNT = 1100L
+
+class UserPointRepositoryStub : UserPointRepository {
+    override fun selectById(id: Long): UserPoint {
+        return when (id) {
+            0L -> UserPoint(id, 1000L, 1000L)
+            1L -> UserPoint(id, 2000L, 2000L)
+            2L -> UserPoint(id, 2000L, 2000L)
+            else -> throw RuntimeException("invalid input")
+        }
+    }
+
+    override fun insertOrUpdate(id: Long, amount: Long): UserPoint {
+        return when(id) {
+            in 0L..2L -> UserPoint(id, amount, 1000L)
+            else -> throw RuntimeException("invalid input")
+        }
+    }
+}
+
+class PointHistoryRepositoryStub : PointHistoryRepository {
+    override fun insert(id: Long, amount: Long, transactionType: TransactionType, updateMillis: Long): PointHistory {
+        if(amount != TEST_PARAM_AMOUNT) throw RuntimeException("invalid amount")
+        return when(id) {
+            in 0L..2L -> PointHistory(id, id, transactionType, amount, updateMillis)
+            else -> throw RuntimeException("invalid input")
+        }
+    }
+
+    override fun selectAllByUserId(userId: Long): List<PointHistory> {
+        return when (userId) {
+            0L -> emptyList()
+            1L -> listOf(
+                PointHistory(0L, 1L, TransactionType.CHARGE, 1000L, 1000L),
+                PointHistory(2L, 1L, TransactionType.CHARGE, 1000L, 1100L)
+            )
+            2L -> listOf(PointHistory(1L, 2L, TransactionType.CHARGE, 2000L, 1200L))
+            else -> emptyList()
+        }
+    }
 }
 
 class UserServiceStub : UserService(UserRepositoryStub()) {
@@ -103,21 +187,6 @@ class UserServiceStub : UserService(UserRepositoryStub()) {
     }
 }
 
-class UserPointRepositoryStub : UserPointRepository {
-    override fun selectById(id: Long): UserPoint {
-        return when (id) {
-            0L -> UserPoint(0L, 1000L, 1000L)
-            1L -> UserPoint(1L, 2000L, 2000L)
-            2L -> UserPoint(2L, 2000L, 2000L)
-            else -> UserPoint(-1L, -1L, -1L)
-        }
-    }
-
-    override fun insertOrUpdate(id: Long, amount: Long): UserPoint {
-        TODO("Not yet implemented")
-    }
-}
-
 class UserRepositoryStub : UserRepository {
     override fun findById(id: Long): User? {
         TODO("Not yet implemented")
@@ -125,20 +194,5 @@ class UserRepositoryStub : UserRepository {
 
     override fun insert(name: String): User {
         TODO("Not yet implemented")
-    }
-}
-
-class PointHistoryRepositoryStub : PointHistoryRepository {
-    override fun insert(id: Long, amount: Long, transactionType: TransactionType, updateMillis: Long): PointHistory {
-        TODO("Not yet implemented")
-    }
-
-    override fun selectAllByUserId(userId: Long): List<PointHistory> {
-        return when(userId) {
-            0L -> emptyList()
-            1L -> listOf(PointHistory(0L, 1L, TransactionType.CHARGE, 1000L, 1000L), PointHistory(2L, 1L, TransactionType.CHARGE, 1200L, 1100L))
-            2L -> listOf(PointHistory(1L, 2L, TransactionType.CHARGE, 1000L, 1000L))
-            else -> emptyList()
-        }
     }
 }

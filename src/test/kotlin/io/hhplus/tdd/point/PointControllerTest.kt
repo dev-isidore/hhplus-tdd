@@ -8,18 +8,23 @@ import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest
 import org.springframework.boot.test.mock.mockito.MockBean
+import org.springframework.http.MediaType
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
+import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.*
 
 @WebMvcTest
 @AutoConfigureMockMvc
 class PointControllerTest {
     @Autowired
-    lateinit var mockMvc: MockMvc
-
+    private lateinit var mockMvc: MockMvc
     @MockBean
     private lateinit var pointService: PointService
+
+    companion object {
+        val NOT_EXISTING_USER_ID = -1L
+    }
 
     //region GET /point/{id}
     @Test
@@ -38,11 +43,9 @@ class PointControllerTest {
              * 존재하지 않는 아이디의 경우 예외를 받아 404 응답을 해야 한다.
              */
     fun `현재 포인트 조회시 존재하지 않는 아이디의 경우`() {
-        val notExistId = -1L
+        `when`(pointService.getCurrentUserPoint(eq(NOT_EXISTING_USER_ID))).thenThrow(UserNotFoundException("test message"))
 
-        `when`(pointService.getCurrentUserPoint(eq(notExistId))).thenThrow(UserNotFoundException("test message"))
-
-        mockMvc.perform(get("/point/$notExistId"))
+        mockMvc.perform(get("/point/$NOT_EXISTING_USER_ID"))
             .andExpect(
                 status().isNotFound
             ).andExpectAll(
@@ -95,9 +98,7 @@ class PointControllerTest {
              * 존재하지 않는 아이디의 경우 예외를 받아 404 응답을 해야 한다.
              */
     fun `포인트 이력 조회시 존재하지 않는 아이디의 경우`() {
-        val notExistId = -1L
-
-        `when`(pointService.getUserPointHistories(eq(notExistId))).thenThrow(UserNotFoundException("test message"))
+        `when`(pointService.getUserPointHistories(eq(NOT_EXISTING_USER_ID))).thenThrow(UserNotFoundException("test message"))
 
         mockMvc.perform(get("/point/-1/histories"))
             .andExpect(
@@ -182,4 +183,106 @@ class PointControllerTest {
             )
     }
     //endregion
+
+    //region PATCH /point/{id}/charge
+    @Test
+            /**
+             * Long 형식의 입력이 아닌 경우 400 응답을 해야 한다.
+             */
+    fun `포인트 충전시 Long 형식 아이디가 아닌 경우`() {
+        mockMvc.perform(
+            patch("/point/id/charge")
+                .contentType(MediaType.APPLICATION_JSON)
+                .accept(MediaType.APPLICATION_JSON)
+                .content("1000")
+        ).andExpect(
+            status().isBadRequest
+        )
+    }
+
+    @Test
+            /**
+             * Long 형식의 입력이 아닌 경우 400 응답을 해야 한다.
+             */
+    fun `포인트 충전시 Long 형식 amount가 아닌 경우`() {
+        val userId = 0L
+
+        mockMvc.perform(
+            patch("/point/${userId}/charge")
+                .contentType(MediaType.APPLICATION_JSON)
+                .accept(MediaType.APPLICATION_JSON)
+                .content("\"textInput\"")
+        ).andExpect(
+            status().isBadRequest
+        )
+    }
+
+    @Test
+            /**
+             * amount는 양수 입력만 받아야 한다.
+             */
+    fun `포인트 충전시 amount가 음수인 경우`() {
+        val userId = 0L
+
+        mockMvc.perform(
+            patch("/point/${userId}/charge")
+                .contentType(MediaType.APPLICATION_JSON)
+                .accept(MediaType.APPLICATION_JSON)
+                .content("-1000")
+        ).andExpect(
+            status().isBadRequest
+        )
+    }
+
+    @Test
+            /**
+             * 존재하지 않는 아이디의 경우 예외를 받아 404 응답을 해야 한다.
+             */
+    fun `포인트 충전시 존재하지 않는 아이디의 경우`() {
+        `when`(pointService.chargeUserPoint(eq(NOT_EXISTING_USER_ID), eq(1000L))).thenThrow(UserNotFoundException("test message"))
+
+        mockMvc.perform(
+            patch("/point/${NOT_EXISTING_USER_ID}/charge")
+                .contentType(MediaType.APPLICATION_JSON)
+                .accept(MediaType.APPLICATION_JSON)
+                .content("1000")
+        ).andExpect(
+            status().isNotFound
+        ).andExpectAll(
+            jsonPath("$.code").value("404"),
+            jsonPath("$.message").value("test message")
+        )
+    }
+
+    @Test
+            /**
+             * 포인트 충전 결과를 올바른 응답 객체에 담아 응답해야 한다.
+             */
+    fun `포인트 충전시 정상 경로`() {
+        val userId = 0L
+        val userPointAmount = 1000L
+        val updateMillis = System.currentTimeMillis()
+        `when`(pointService.chargeUserPoint(eq(userId), eq(1000L))).thenReturn(
+            UserPoint(
+                userId,
+                userPointAmount,
+                updateMillis
+            )
+        )
+
+        mockMvc.perform(
+            patch("/point/$userId/charge")
+                .contentType(MediaType.APPLICATION_JSON)
+                .accept(MediaType.APPLICATION_JSON)
+                .content("1000")
+        ).andExpect(
+            status().isOk
+        ).andExpectAll(
+            jsonPath("$.id").value(userId),
+            jsonPath("$.point").value(userPointAmount),
+            jsonPath("$.updateMillis").value(updateMillis)
+        )
+    }
+    //endregion
+
 }
