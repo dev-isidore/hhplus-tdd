@@ -65,8 +65,13 @@ class PointController(@Autowired private val pointService: PointService) {
     fun use(
         @PathVariable id: Long,
         @RequestBody amount: Long,
-    ): UserPoint {
-        return UserPoint(0, 0, 0)
+    ): UserPointResponse {
+        if(amount < 0) {
+            logger.warn("Negative amount: $amount id: $id")
+            throw NegativeAmountException("amount:$amount cannot be negative")
+        }
+        val usedUserPoint = pointService.useUserPoint(id, amount)
+        return UserPointResponse.of(usedUserPoint)
     }
 
     @ExceptionHandler(UserNotFoundException::class)

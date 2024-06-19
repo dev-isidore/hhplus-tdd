@@ -43,4 +43,14 @@ class PointService(
         pointHistoryRepository.insert(id, amount, TransactionType.CHARGE, chargeUserPoint.updateMillis)
         return chargeUserPoint
     }
+
+    fun useUserPoint(id: Long, amount: Long): UserPoint {
+        if(amount < 0) {
+            throw NegativeAmountException("amount:$amount cannot be negative")
+        }
+        val currentUserPoint = getCurrentUserPoint(id)
+        val usedUserPoint = userPointRepository.insertOrUpdate(id, currentUserPoint.use(amount).point)
+        pointHistoryRepository.insert(id, amount, TransactionType.USE, usedUserPoint.updateMillis)
+        return usedUserPoint
+    }
 }

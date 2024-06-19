@@ -1,5 +1,6 @@
 package io.hhplus.tdd.point
 
+import io.hhplus.tdd.point.exception.NegativeAmountException
 import io.hhplus.tdd.user.exception.UserNotFoundException
 import org.junit.jupiter.api.Test
 import org.mockito.ArgumentMatchers.eq
@@ -285,4 +286,131 @@ class PointControllerTest {
     }
     //endregion
 
+    //region PATCH /point/{id}/use
+    @Test
+            /**
+             * Long 형식의 입력이 아닌 경우 400 응답을 해야 한다.
+             */
+    fun `포인트 사용시 Long 형식 아이디가 아닌 경우`() {
+        mockMvc.perform(
+            patch("/point/id/use")
+                .contentType(MediaType.APPLICATION_JSON)
+                .accept(MediaType.APPLICATION_JSON)
+                .content("1000")
+        ).andExpect(
+            status().isBadRequest
+        )
+    }
+
+    @Test
+            /**
+             * Long 형식의 입력이 아닌 경우 400 응답을 해야 한다.
+             */
+    fun `포인트 사용시 Long 형식 amount가 아닌 경우`() {
+        val userId = 0L
+
+        mockMvc.perform(
+            patch("/point/${userId}/use")
+                .contentType(MediaType.APPLICATION_JSON)
+                .accept(MediaType.APPLICATION_JSON)
+                .content("\"textInput\"")
+        ).andExpect(
+            status().isBadRequest
+        )
+    }
+
+    @Test
+            /**
+             * amount는 양수 입력만 받아야 한다.
+             */
+    fun `포인트 사용시 amount가 음수인 경우`() {
+        val userId = 0L
+        val amount = -1000L
+
+        mockMvc.perform(
+            patch("/point/${userId}/use")
+                .contentType(MediaType.APPLICATION_JSON)
+                .accept(MediaType.APPLICATION_JSON)
+                .content(amount.toString())
+        ).andExpect(
+            status().isBadRequest
+        ).andExpectAll(
+            jsonPath("$.code").value("400"),
+            jsonPath("$.message").value("amount:$amount cannot be negative")
+        )
+    }
+
+    @Test
+            /**
+             * 존재하지 않는 아이디의 경우 예외를 받아 404 응답을 해야 한다.
+             */
+    fun `포인트 사용시 존재하지 않는 아이디의 경우`() {
+        `when`(pointService.useUserPoint(eq(NOT_EXISTING_USER_ID), eq(1000L))).thenThrow(UserNotFoundException("test message"))
+
+        mockMvc.perform(
+            patch("/point/${NOT_EXISTING_USER_ID}/use")
+                .contentType(MediaType.APPLICATION_JSON)
+                .accept(MediaType.APPLICATION_JSON)
+                .content("1000")
+        ).andExpect(
+            status().isNotFound
+        ).andExpectAll(
+            jsonPath("$.code").value("404"),
+            jsonPath("$.message").value("test message")
+        )
+    }
+
+    @Test
+            /**
+             * amount가 사용가능한 포인트보다 큰 경우 예외를 던지고 이를 400 응답에 담아야 한다.
+             */
+    fun `포인트 사용시 amount가 포인트보다 큰 경우`() {
+        val userId = 0L
+        `when`(pointService.useUserPoint(eq(userId), eq(1000L))).thenThrow(
+            NegativeAmountException("test message")
+        )
+
+        mockMvc.perform(
+            patch("/point/${userId}/use")
+                .contentType(MediaType.APPLICATION_JSON)
+                .accept(MediaType.APPLICATION_JSON)
+                .content("1000")
+        ).andExpect(
+            status().isBadRequest
+        ).andExpectAll(
+            jsonPath("$.code").value("400"),
+            jsonPath("$.message").value("test message")
+        )
+    }
+
+    @Test
+            /**
+             * 포인트 충전 결과를 올바른 응답 객체에 담아 응답해야 한다.
+             */
+    fun `포인트 사용시 정상 경로`() {
+        val userId = 0L
+        val userPointAmount = 1000L
+        val updateMillis = System.currentTimeMillis()
+        `when`(pointService.useUserPoint(eq(userId), eq(1000L))).thenReturn(
+            UserPoint(
+                userId,
+                userPointAmount,
+                updateMillis
+            )
+        )
+
+        mockMvc.perform(
+            patch("/point/$userId/use")
+                .contentType(MediaType.APPLICATION_JSON)
+                .accept(MediaType.APPLICATION_JSON)
+                .content("1000")
+        ).andExpect(
+            status().isOk
+        ).andExpectAll(
+            jsonPath("$.id").value(userId),
+            jsonPath("$.point").value(userPointAmount),
+            jsonPath("$.updateMillis").value(updateMillis)
+        )
+    }
+    //endregion
 }

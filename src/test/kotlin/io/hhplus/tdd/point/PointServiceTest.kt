@@ -132,6 +132,58 @@ class PointServiceTest {
         assertThat(chargeUserPoint.id).isEqualTo(userId)
     }
     //endregion
+
+    //region useUserPoint
+    @Test
+            /**
+             * 포인트 사용시 존재하지 않는 id로 시도시 예외를 던진다.
+             */
+    fun `포인트 사용시 존재하지 않는 아이디로 시도하는 경우`() {
+        val exception = assertThrows<UserNotFoundException> {
+            pointService.useUserPoint(NOT_EXISITING_USER_ID, 1000L)
+        }
+        assertThat(exception).message().contains("$NOT_EXISITING_USER_ID does not exist.")
+    }
+
+    @Test
+            /**
+             * 포인트 사용시 사용하려는 양이 음수인 경우 예외를 던진다.
+             */
+    fun `포인트 사용시 사용하려는 양이 음수인 경우`() {
+        val amount = -1000L
+
+        val exception = assertThrows<NegativeAmountException> {
+            pointService.useUserPoint(0L, amount)
+        }
+        assertThat(exception).message().contains("amount:$amount cannot be negative")
+    }
+
+    @Test
+            /**
+             * 포인트 사용시 사용하려는 양이 충전된 값보다 큰 경우 예외를 던진다.
+             */
+    fun `포인트 사용시 사용하는 양이 기존 양보다 큰 경우`() {
+        val amount = 10000L
+
+        val exception = assertThrows<NegativeAmountException> {
+            pointService.useUserPoint(0L, amount)
+        }
+        assertThat(exception).message().contains("amount:$amount is bigger than current point")
+    }
+
+    @Test
+            /**
+             * 포인트 사용시 사용한 결과를 반환한다.
+             */
+    fun `포인트 사용`() {
+        val amount = TEST_PARAM_AMOUNT
+
+        val usedUserPoint = pointService.useUserPoint(1L, amount)
+
+        assertThat(usedUserPoint.point).isEqualTo(2000 - TEST_PARAM_AMOUNT)
+        assertThat(usedUserPoint.id).isEqualTo(1L)
+    }
+    //endregion
 }
 
 private const val TEST_PARAM_AMOUNT = 1100L
