@@ -8,11 +8,11 @@ import org.springframework.stereotype.Component
  * 해당 Table 클래스는 변경하지 않고 공개된 API 만을 사용해 데이터를 제어합니다.
  */
 @Component
-class PointHistoryTable {
+class PointHistoryTable: PointHistoryRepository {
     private val table = mutableListOf<PointHistory>()
     private var cursor: Long = 1L
 
-    fun insert(
+    override fun insert(
         id: Long,
         amount: Long,
         transactionType: TransactionType,
@@ -30,7 +30,7 @@ class PointHistoryTable {
         return history
     }
 
-    fun selectAllByUserId(userId: Long): List<PointHistory> {
+    override fun selectAllByUserId(userId: Long): List<PointHistory> {
         return table.filter { it.userId == userId }
     }
 }
