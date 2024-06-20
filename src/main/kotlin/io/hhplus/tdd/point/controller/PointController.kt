@@ -1,6 +1,7 @@
-package io.hhplus.tdd.point
+package io.hhplus.tdd.point.controller
 
 import io.hhplus.tdd.ErrorResponse
+import io.hhplus.tdd.point.service.PointService
 import io.hhplus.tdd.point.dto.response.PointHistoryResponse
 import io.hhplus.tdd.point.dto.response.UserPointResponse
 import io.hhplus.tdd.point.exception.NegativeAmountException

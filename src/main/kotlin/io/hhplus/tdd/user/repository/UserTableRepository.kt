@@ -1,6 +1,6 @@
-package io.hhplus.tdd.database
+package io.hhplus.tdd.user.repository
 
-import io.hhplus.tdd.user.User
+import io.hhplus.tdd.user.service.model.User
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.stereotype.Repository
 

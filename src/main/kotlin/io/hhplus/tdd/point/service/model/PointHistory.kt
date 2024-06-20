@@ -1,4 +1,4 @@
-package io.hhplus.tdd.point
+package io.hhplus.tdd.point.service.model
 
 class PointHistory (
     val id: Long,

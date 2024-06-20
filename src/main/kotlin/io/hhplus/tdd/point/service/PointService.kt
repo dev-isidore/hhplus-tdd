@@ -1,10 +1,13 @@
-package io.hhplus.tdd.point
+package io.hhplus.tdd.point.service
 
-import io.hhplus.tdd.database.PointHistoryRepository
-import io.hhplus.tdd.database.UserPointRepository
+import io.hhplus.tdd.point.service.model.PointHistory
+import io.hhplus.tdd.point.service.model.TransactionType
+import io.hhplus.tdd.point.service.model.UserPoint
+import io.hhplus.tdd.point.repository.PointHistoryRepository
+import io.hhplus.tdd.point.repository.UserPointRepository
 import io.hhplus.tdd.point.exception.NegativeAmountException
 import io.hhplus.tdd.user.exception.UserNotFoundException
-import io.hhplus.tdd.user.UserService
+import io.hhplus.tdd.user.service.UserService
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Autowired

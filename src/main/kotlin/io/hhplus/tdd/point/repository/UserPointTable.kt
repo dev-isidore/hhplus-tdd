@@ -1,6 +1,6 @@
-package io.hhplus.tdd.database
+package io.hhplus.tdd.point.repository
 
-import io.hhplus.tdd.point.UserPointEntity
+import io.hhplus.tdd.point.repository.entity.UserPointEntity
 import org.springframework.stereotype.Component
 
 /**

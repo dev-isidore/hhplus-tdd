@@ -1,7 +1,6 @@
-package io.hhplus.tdd.database
+package io.hhplus.tdd.user.repository
 
-import io.hhplus.tdd.user.User
-import io.hhplus.tdd.user.UserEntity
+import io.hhplus.tdd.user.repository.entity.UserEntity
 import org.springframework.stereotype.Component
 
 @Component

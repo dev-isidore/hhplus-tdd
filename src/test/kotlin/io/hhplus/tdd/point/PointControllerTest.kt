@@ -1,6 +1,10 @@
 package io.hhplus.tdd.point
 
 import io.hhplus.tdd.point.exception.NegativeAmountException
+import io.hhplus.tdd.point.service.PointService
+import io.hhplus.tdd.point.service.model.PointHistory
+import io.hhplus.tdd.point.service.model.TransactionType
+import io.hhplus.tdd.point.service.model.UserPoint
 import io.hhplus.tdd.user.exception.UserNotFoundException
 import org.junit.jupiter.api.Test
 import org.mockito.ArgumentMatchers.eq

@@ -1,6 +1,6 @@
 package io.hhplus.tdd.point.dto.response
 
-import io.hhplus.tdd.point.PointHistory
+import io.hhplus.tdd.point.service.model.PointHistory
 
 data class PointHistoryResponse(
     val id: Long,

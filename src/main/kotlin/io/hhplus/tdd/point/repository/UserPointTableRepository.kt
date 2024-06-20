@@ -1,11 +1,11 @@
-package io.hhplus.tdd.database
+package io.hhplus.tdd.point.repository
 
-import io.hhplus.tdd.point.UserPoint
+import io.hhplus.tdd.point.service.model.UserPoint
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.stereotype.Repository
 
 @Repository
-class UserPointTableRepository(@Autowired private val userPointTable: UserPointTable):UserPointRepository {
+class UserPointTableRepository(@Autowired private val userPointTable: UserPointTable): UserPointRepository {
     override fun selectById(id: Long): UserPoint {
         return userPointTable.selectById(id).mapToUserPoint()
     }
