@@ -5,12 +5,6 @@ data class UserPointEntity(
     val point: Long,
     val updateMillis: Long,
 ) {
-    companion object {
-        fun of(userPoint: UserPoint): UserPointEntity {
-            return UserPointEntity(id = userPoint.id, point = userPoint.point, updateMillis = userPoint.updateMillis)
-        }
-    }
-
     fun mapToUserPoint(): UserPoint {
         return UserPoint(id, point, updateMillis)
     }

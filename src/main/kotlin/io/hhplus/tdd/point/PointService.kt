@@ -51,7 +51,6 @@ class PointService(
         }
     }
 
-    @Synchronized
     fun useUserPoint(id: Long, amount: Long): UserPoint {
         val lock = concurrentLockMap.computeIfAbsent(id) { ReentrantLock() }
         lock.withLock {
