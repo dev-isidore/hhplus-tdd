@@ -9,6 +9,9 @@ import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.stereotype.Service
+import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.locks.ReentrantLock
+import kotlin.concurrent.withLock
 
 @Service
 class PointService(
@@ -17,6 +20,7 @@ class PointService(
     @Autowired private val pointHistoryRepository: PointHistoryRepository,
 ) {
     private val logger: Logger = LoggerFactory.getLogger(javaClass)
+    private val concurrentLockMap: ConcurrentHashMap<Long, ReentrantLock> = ConcurrentHashMap()
 
     fun getCurrentUserPoint(id: Long): UserPoint {
         if(!userService.checkUserExists(id)) {
@@ -35,22 +39,29 @@ class PointService(
     }
 
     fun chargeUserPoint(id: Long, amount: Long): UserPoint {
-        if(amount < 0) {
-            throw NegativeAmountException("amount:$amount cannot be negative")
+        val lock = concurrentLockMap.computeIfAbsent(id) { ReentrantLock() }
+        lock.withLock {
+            if(amount < 0) {
+                throw NegativeAmountException("amount:$amount cannot be negative")
+            }
+            val currentUserPoint = getCurrentUserPoint(id)
+            val chargeUserPoint = userPointRepository.insertOrUpdate(id, currentUserPoint.charge(amount).point)
+            pointHistoryRepository.insert(id, amount, TransactionType.CHARGE, chargeUserPoint.updateMillis)
+            return chargeUserPoint
         }
-        val currentUserPoint = getCurrentUserPoint(id)
-        val chargeUserPoint = userPointRepository.insertOrUpdate(id, currentUserPoint.charge(amount).point)
-        pointHistoryRepository.insert(id, amount, TransactionType.CHARGE, chargeUserPoint.updateMillis)
-        return chargeUserPoint
     }
 
+    @Synchronized
     fun useUserPoint(id: Long, amount: Long): UserPoint {
-        if(amount < 0) {
-            throw NegativeAmountException("amount:$amount cannot be negative")
+        val lock = concurrentLockMap.computeIfAbsent(id) { ReentrantLock() }
+        lock.withLock {
+            if(amount < 0) {
+                throw NegativeAmountException("amount:$amount cannot be negative")
+            }
+            val currentUserPoint = getCurrentUserPoint(id)
+            val usedUserPoint = userPointRepository.insertOrUpdate(id, currentUserPoint.use(amount).point)
+            pointHistoryRepository.insert(id, amount, TransactionType.USE, usedUserPoint.updateMillis)
+            return usedUserPoint
         }
-        val currentUserPoint = getCurrentUserPoint(id)
-        val usedUserPoint = userPointRepository.insertOrUpdate(id, currentUserPoint.use(amount).point)
-        pointHistoryRepository.insert(id, amount, TransactionType.USE, usedUserPoint.updateMillis)
-        return usedUserPoint
     }
 }

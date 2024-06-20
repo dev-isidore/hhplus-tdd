@@ -3,15 +3,20 @@ package io.hhplus.tdd.point
 import io.hhplus.tdd.database.PointHistoryRepository
 import io.hhplus.tdd.database.UserPointRepository
 import io.hhplus.tdd.database.UserRepository
+import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc
 import org.springframework.boot.test.context.SpringBootTest
+import org.springframework.http.HttpStatus
 import org.springframework.http.MediaType
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.*
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.Executors
+import java.util.concurrent.atomic.AtomicInteger
 
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -402,6 +407,111 @@ class PointControllerEntryTest() {
             jsonPath("$.code").value("400"),
             jsonPath("$.message").value("amount:$amount is bigger than current point")
         )
+    }
+    //endregion
+
+    //region concurrent
+    val concurrentRequest = 100
+    val multipleRepeat = 100
+
+    @Test
+    fun `동시에 같은 아이디에 대한 충전 요청이 여러번 있는 경우`() {
+
+        val user = userRepository.insert("testPointChargeConcurrentUser")
+        pointHistoryRepository.insert(user.id, 1000L, TransactionType.CHARGE, 1000L)
+        userPointRepository.insertOrUpdate(user.id, 1000L)
+
+        val threadPools = Executors.newFixedThreadPool(concurrentRequest)
+        val latch = CountDownLatch(concurrentRequest * multipleRepeat)
+
+        repeat(concurrentRequest * multipleRepeat) {
+            threadPools.submit {
+                try {
+                    mockMvc.perform(
+                        patch("/point/${user.id}/charge")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .accept(MediaType.APPLICATION_JSON)
+                            .content("1000")
+                    ).andExpect(
+                        status().isOk
+                    ).andExpectAll(
+                        jsonPath("$.id").value(user.id),
+                    )
+                } finally {
+                    latch.countDown()
+                }
+            }
+        }
+        latch.await()
+        val result = userPointRepository.selectById(user.id)
+
+        assertThat(result.point).isEqualTo(1000L + concurrentRequest * multipleRepeat * 1000)
+    }
+
+    @Test
+    fun `동시에 같은 아이디에 대한 사용 요청이 여러번 있는 경우`() {
+        val user = userRepository.insert("testPointUseConcurrentUser")
+        val initalPoint = 1000L + 1000 * concurrentRequest * multipleRepeat
+        pointHistoryRepository.insert(user.id, initalPoint, TransactionType.CHARGE, 1000L)
+        userPointRepository.insertOrUpdate(user.id, initalPoint)
+        val threadPools = Executors.newFixedThreadPool(concurrentRequest)
+        val latch = CountDownLatch(concurrentRequest * multipleRepeat)
+
+        repeat(concurrentRequest * multipleRepeat) {
+            threadPools.submit {
+                try {
+                    mockMvc.perform(
+                        patch("/point/${user.id}/use")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .accept(MediaType.APPLICATION_JSON)
+                            .content("1000")
+                    )
+                } finally {
+                    latch.countDown()
+                }
+            }
+        }
+        latch.await()
+        val result = userPointRepository.selectById(user.id)
+
+        assertThat(result.point).isEqualTo(1000L)
+    }
+
+    @Test
+    fun `동시에 같은 아이디에 대한 사용 및 충전 요청이 여러번 있는 경우`() {
+        val user = userRepository.insert("testPointUseChargeConcurrentUser")
+
+        val threadPools = Executors.newFixedThreadPool(concurrentRequest)
+        val latch = CountDownLatch(concurrentRequest * multipleRepeat)
+
+        val successCounter = AtomicInteger(0)
+
+        repeat(concurrentRequest * multipleRepeat) {
+            threadPools.submit {
+                try {
+                    val mvcResult = mockMvc.perform(
+                        patch("/point/${user.id}/${if (it % 5 == 0) "use" else "charge"}")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .accept(MediaType.APPLICATION_JSON)
+                            .content(if (it % 5 == 0) "2000" else "1000")
+                    ).andReturn()
+                    if(mvcResult.response.status == HttpStatus.OK.value()) {
+                        if (it % 5 == 0) {
+                            successCounter.decrementAndGet()
+                            successCounter.decrementAndGet()
+                        } else {
+                            successCounter.incrementAndGet()
+                        }
+                    }
+                } finally {
+                    latch.countDown()
+                }
+            }
+        }
+        latch.await()
+        val result = userPointRepository.selectById(user.id)
+
+        assertThat(result.point).isEqualTo(1000L * successCounter.get())
     }
     //endregion
 }
