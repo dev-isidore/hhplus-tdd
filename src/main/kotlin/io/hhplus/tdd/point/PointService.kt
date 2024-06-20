@@ -23,27 +23,19 @@ class PointService(
     private val concurrentLockMap: ConcurrentHashMap<Long, ReentrantLock> = ConcurrentHashMap()
 
     fun getCurrentUserPoint(id: Long): UserPoint {
-        if(!userService.checkUserExists(id)) {
-            logger.warn("User $id does not exist")
-            throw UserNotFoundException("$id does not exist.")
-        }
+        checkUser(id)
         return userPointRepository.selectById(id)
     }
 
     fun getUserPointHistories(id: Long): List<PointHistory> {
-        if(!userService.checkUserExists(id)) {
-            logger.warn("User $id does not exist")
-            throw UserNotFoundException("$id does not exist.")
-        }
+        checkUser(id)
         return pointHistoryRepository.selectAllByUserId(id)
     }
 
     fun chargeUserPoint(id: Long, amount: Long): UserPoint {
         val lock = concurrentLockMap.computeIfAbsent(id) { ReentrantLock() }
         lock.withLock {
-            if(amount < 0) {
-                throw NegativeAmountException("amount:$amount cannot be negative")
-            }
+            checkAmount(amount)
             val currentUserPoint = getCurrentUserPoint(id)
             val chargeUserPoint = userPointRepository.insertOrUpdate(id, currentUserPoint.charge(amount).point)
             pointHistoryRepository.insert(id, amount, TransactionType.CHARGE, chargeUserPoint.updateMillis)
@@ -54,13 +46,24 @@ class PointService(
     fun useUserPoint(id: Long, amount: Long): UserPoint {
         val lock = concurrentLockMap.computeIfAbsent(id) { ReentrantLock() }
         lock.withLock {
-            if(amount < 0) {
-                throw NegativeAmountException("amount:$amount cannot be negative")
-            }
+            checkAmount(amount)
             val currentUserPoint = getCurrentUserPoint(id)
             val usedUserPoint = userPointRepository.insertOrUpdate(id, currentUserPoint.use(amount).point)
             pointHistoryRepository.insert(id, amount, TransactionType.USE, usedUserPoint.updateMillis)
             return usedUserPoint
+        }
+    }
+
+    private fun checkUser(id: Long) {
+        if(!userService.checkUserExists(id)) {
+            logger.warn("User $id does not exist")
+            throw UserNotFoundException("$id does not exist.")
+        }
+    }
+
+    private fun checkAmount(amount: Long) {
+        if(amount < 0) {
+            throw NegativeAmountException("amount:$amount cannot be negative")
         }
     }
 }
