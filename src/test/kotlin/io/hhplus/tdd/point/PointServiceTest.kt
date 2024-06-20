@@ -1,11 +1,16 @@
 package io.hhplus.tdd.point
 
-import io.hhplus.tdd.database.PointHistoryRepository
-import io.hhplus.tdd.database.UserPointRepository
-import io.hhplus.tdd.database.UserRepository
+import io.hhplus.tdd.point.exception.ExcessiveAmountException
+import io.hhplus.tdd.point.repository.PointHistoryRepository
+import io.hhplus.tdd.point.repository.UserPointRepository
+import io.hhplus.tdd.user.repository.UserRepository
 import io.hhplus.tdd.point.exception.NegativeAmountException
-import io.hhplus.tdd.user.User
-import io.hhplus.tdd.user.UserService
+import io.hhplus.tdd.point.service.PointService
+import io.hhplus.tdd.point.service.model.PointHistory
+import io.hhplus.tdd.point.service.model.TransactionType
+import io.hhplus.tdd.point.service.model.UserPoint
+import io.hhplus.tdd.user.service.model.User
+import io.hhplus.tdd.user.service.UserService
 import io.hhplus.tdd.user.exception.UserNotFoundException
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
@@ -85,10 +90,10 @@ class PointServiceTest {
         val userPointHistories2 = pointService.getUserPointHistories(userId2)
 
         assertThat(userPointHistories1.size).isEqualTo(2)
-        assertThat(userPointHistories1[0]).isEqualTo(PointHistory(0L, 1L, TransactionType.CHARGE, 1000L, 1000L))
-        assertThat(userPointHistories1[1]).isEqualTo(PointHistory(2L, 1L, TransactionType.CHARGE, 1000L, 1100L))
+        assertThat(userPointHistories1[0]).usingRecursiveComparison().isEqualTo(PointHistory(0L, 1L, TransactionType.CHARGE, 1000L, 1000L))
+        assertThat(userPointHistories1[1]).usingRecursiveComparison().isEqualTo(PointHistory(2L, 1L, TransactionType.CHARGE, 1000L, 1100L))
         assertThat(userPointHistories2.size).isEqualTo(1)
-        assertThat(userPointHistories2[0]).isEqualTo(PointHistory(1L, 2L, TransactionType.CHARGE, 2000L, 1200L))
+        assertThat(userPointHistories2[0]).usingRecursiveComparison().isEqualTo(PointHistory(1L, 2L, TransactionType.CHARGE, 2000L, 1200L))
     }
     //endregion
 
@@ -165,7 +170,7 @@ class PointServiceTest {
     fun `포인트 사용시 사용하는 양이 기존 양보다 큰 경우`() {
         val amount = 10000L
 
-        val exception = assertThrows<NegativeAmountException> {
+        val exception = assertThrows<ExcessiveAmountException> {
             pointService.useUserPoint(0L, amount)
         }
         assertThat(exception).message().contains("amount:$amount is bigger than current point")

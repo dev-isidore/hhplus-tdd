@@ -1,6 +1,7 @@
-package io.hhplus.tdd.point
+package io.hhplus.tdd.point.controller
 
 import io.hhplus.tdd.ErrorResponse
+import io.hhplus.tdd.point.service.PointService
 import io.hhplus.tdd.point.dto.response.PointHistoryResponse
 import io.hhplus.tdd.point.dto.response.UserPointResponse
 import io.hhplus.tdd.point.exception.NegativeAmountException
@@ -8,7 +9,6 @@ import io.hhplus.tdd.user.exception.UserNotFoundException
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Autowired
-import org.springframework.core.annotation.Order
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.*

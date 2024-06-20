@@ -1,8 +1,9 @@
 package io.hhplus.tdd.point
 
-import io.hhplus.tdd.database.PointHistoryRepository
-import io.hhplus.tdd.database.UserPointRepository
-import io.hhplus.tdd.database.UserRepository
+import io.hhplus.tdd.point.repository.PointHistoryRepository
+import io.hhplus.tdd.point.repository.UserPointRepository
+import io.hhplus.tdd.user.repository.UserRepository
+import io.hhplus.tdd.point.service.model.TransactionType
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
