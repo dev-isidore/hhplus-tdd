@@ -1,6 +1,6 @@
 package io.hhplus.tdd.point
 
-data class PointHistory(
+class PointHistory (
     val id: Long,
     val userId: Long,
     val type: TransactionType,

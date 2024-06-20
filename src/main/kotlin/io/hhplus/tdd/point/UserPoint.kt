@@ -2,7 +2,7 @@ package io.hhplus.tdd.point
 
 import io.hhplus.tdd.point.exception.NegativeAmountException
 
-data class UserPoint(
+class UserPoint(
     val id: Long,
     val point: Long,
     val updateMillis: Long,
@@ -12,7 +12,7 @@ data class UserPoint(
     }
 
     fun use(amount: Long): UserPoint {
-        if(amount > this.point) {
+        if (amount > this.point) {
             throw NegativeAmountException("amount:$amount is bigger than current point")
         }
         return UserPoint(id, point - amount, updateMillis)

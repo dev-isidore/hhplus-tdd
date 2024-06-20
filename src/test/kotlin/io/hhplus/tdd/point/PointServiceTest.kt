@@ -85,10 +85,10 @@ class PointServiceTest {
         val userPointHistories2 = pointService.getUserPointHistories(userId2)
 
         assertThat(userPointHistories1.size).isEqualTo(2)
-        assertThat(userPointHistories1[0]).isEqualTo(PointHistory(0L, 1L, TransactionType.CHARGE, 1000L, 1000L))
-        assertThat(userPointHistories1[1]).isEqualTo(PointHistory(2L, 1L, TransactionType.CHARGE, 1000L, 1100L))
+        assertThat(userPointHistories1[0]).usingRecursiveComparison().isEqualTo(PointHistory(0L, 1L, TransactionType.CHARGE, 1000L, 1000L))
+        assertThat(userPointHistories1[1]).usingRecursiveComparison().isEqualTo(PointHistory(2L, 1L, TransactionType.CHARGE, 1000L, 1100L))
         assertThat(userPointHistories2.size).isEqualTo(1)
-        assertThat(userPointHistories2[0]).isEqualTo(PointHistory(1L, 2L, TransactionType.CHARGE, 2000L, 1200L))
+        assertThat(userPointHistories2[0]).usingRecursiveComparison().isEqualTo(PointHistory(1L, 2L, TransactionType.CHARGE, 2000L, 1200L))
     }
     //endregion
 

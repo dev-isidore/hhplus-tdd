@@ -1,19 +1,20 @@
 package io.hhplus.tdd.database
 
 import io.hhplus.tdd.user.User
+import io.hhplus.tdd.user.UserEntity
 import org.springframework.stereotype.Component
 
 @Component
-class UserTable : UserRepository {
-    private val table = HashMap<Long, User>()
+class UserTable {
+    private val table = HashMap<Long, UserEntity>()
 
-    override fun findById(id: Long): User? {
+    fun findById(id: Long): UserEntity? {
         return table[id]
     }
 
-    override fun insert(name: String): User {
+    fun insert(name: String): UserEntity {
         val id = table.size.toLong()
-        val user = User(id = id, name = name)
+        val user = UserEntity(id = id, name = name)
         table[id] = user
         return user
     }
