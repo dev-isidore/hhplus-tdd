@@ -1,6 +1,6 @@
 package io.hhplus.tdd.point
 
-import io.hhplus.tdd.point.exception.NegativeAmountException
+import io.hhplus.tdd.point.exception.ExcessiveAmountException
 
 class UserPoint(
     val id: Long,
@@ -13,7 +13,7 @@ class UserPoint(
 
     fun use(amount: Long): UserPoint {
         if (amount > this.point) {
-            throw NegativeAmountException("amount:$amount is bigger than current point")
+            throw ExcessiveAmountException("amount:$amount is bigger than current point")
         }
         return UserPoint(id, point - amount, updateMillis)
     }
